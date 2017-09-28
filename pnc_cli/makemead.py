@@ -21,11 +21,11 @@ from pnc_cli.tools.config_utils import ConfigReader
 
 
 @arg('-c', '--config', help='Make-mead style configuration file possibly extended with pnc.* data fields.')
-@arg('-b', '--run_build', help='Run Build')
+@arg('-b', '--run-build', help='Run Build')
 @arg('-e', '--environment', help='PNC Environment ID')
 @arg('-s', '--sufix', help='Adding suffix to artifact\'s name')
-@arg('-p', '--product_name', help='Product name')
-@arg('-v', '--product_version', help='Product version')
+@arg('-p', '--product-name', help='Product name')
+@arg('-v', '--product-version', help='Product version')
 @arg('--look-up-only', help="""You can do a partial import by a config and specify, which Build Configurations
  should be looked up by name. You can specify multiple sections and separate them by comma (no spaces should be included).
  Example: --look-up-only jdg-infinispan
@@ -38,7 +38,7 @@ def make_mead(config=None, run_build=False, environment=1, sufix="", product_nam
     :param config: Make Mead config name
     :return:
     """
-    if not validate_input_parameters(config, product_name, product_version):
+    if not validate_input_parameters(config):
         return 1
 
     try:
@@ -51,6 +51,22 @@ def make_mead(config=None, run_build=False, environment=1, sufix="", product_nam
         logging.error(err)
         print '-c false'
         return 1
+
+    if product_name is None:
+        #Try and get it from the config file
+        product_name = config_reader.common_section['product_name']
+        if product_name is None:
+            raise ValueError("Product Name or --product-name is not specified.")
+        logging.info("Using product_name: {} from config file".format(product_name))
+
+    if product_version is None:
+        main_component = config_reader.common_section['jira']['version_project']
+        if config_reader.package_configs.has_key(main_component):
+            product_version = \
+                config_reader.package_configs[main_component]['version']
+        if product_version is None:
+            raise ValueError("Product Version or --product-version is not specified.")
+        logging.info("Using product_versuib: {} from config file".format(product_version))
 
     ids = dict()
     (subarts, deps_dict) = config_reader.get_dependency_structure()
@@ -173,7 +189,7 @@ def lookup_product_version(product_name, product_version):
         logging.error('Product version not found')
         return None
 
-def validate_input_parameters(config, product_name, product_version):
+def validate_input_parameters(config):
     valid = True
     if config is None:
         logging.error('Config file --config is not specified.')
@@ -181,15 +197,6 @@ def validate_input_parameters(config, product_name, product_version):
     elif not os.path.isfile(config):
         logging.error('Config file %s not found.', os.path.abspath(config))
         valid = False
-
-    if product_name is None:
-        logging.error('Product Name --product-name is not specified.')
-        valid = False
-
-    if product_version is None:
-        logging.error('Product Version --product-version is not specified.')
-        valid = False
-
     return valid
 
 def get_maven_options(params):
