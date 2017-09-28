@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 
+import copy
 import logging
 import os
 import re
+from ConfigParser import ConfigParser, RawConfigParser, NoOptionError, NoSectionError,DuplicateSectionError
 import string
-from ConfigParser import ConfigParser, NoOptionError, NoSectionError, DuplicateSectionError
+from tasks import Tasks
 
 import utils
 from scm_utils import ScmInfo, get_scm_info
-from tasks import Tasks
 
 
 def get_config_option(params, option):
@@ -31,11 +32,12 @@ class ConfigReader:
     common_section = {}
     package_configs = {}
     pom_manipulator_config = {}
+    parser = {}
 
     def __init__(self, config_file, config_defaults=ConfigDefaults):
         self.config_file = config_file
         self.config_defaults = config_defaults
-        (self.common_section, self.package_configs, self.pom_manipulator_config) = self._do_read_config(config_file, config_defaults.pom_manipulator_ext)
+        (self.common_section, self.package_configs, self.pom_manipulator_config, self.parser) = self._do_read_config(config_file, config_defaults.pom_manipulator_ext)
         self.check_config()
 
     def get_configs(self, artifacts):
@@ -53,6 +55,7 @@ class ConfigReader:
             raise NoSectionError(artifact)
 
         config = self.common_section.copy()
+
         config.update(self.pom_manipulator_config.copy())
         if artifact and artifact in self.package_configs:
             config.update(self.package_configs[artifact].copy())
@@ -129,6 +132,9 @@ class ConfigReader:
         options['profiles'] = list(temp)
 
         return config
+
+    def get(self, session_name,property_name):
+        return self.parser.get(session_name , property_name)
 
     def get_artifact_by_package(self, package_name):
         for artifact, config in self.package_configs.iteritems():
@@ -238,6 +244,19 @@ class ConfigReader:
             section_config['downstreamjobs'] = parser.get(section, 'downstreamjobs')
         else:
             section_config['downstreamjobs'] = None
+
+        if parser.has_option(section, 'deliverables'):
+            #print "{} has deliverables".format(parser.get(section, 'package'))
+            section_config['deliverables'] = parser.get(section, 'deliverables')
+            deliverables={}
+            for deliverable in section_config['deliverables'].split(','):
+                deliverable = deliverable.split('=')
+                deliverables.update({deliverable[0] : deliverable[1]})
+            section_config['deliverables'] = deliverables
+
+        else:
+            section_config['devliverables'] = None
+
         if parser.has_option(section, 'jobtimeout'):
             section_config['jobtimeout'] = parser.getint(section, 'jobtimeout')
         else:
@@ -274,6 +293,8 @@ class ConfigReader:
         #If versionOverride=true, then parse the version.override from versions, pass it to pm extension later
         if 'properties' in options and options['properties'].has_key('versionOverride') and options['properties']['versionOverride'] == 'true':
             options['properties']['version.override'] = re.split(".redhat-", section_config['version'])[0]
+        if 'properties' in options and options['properties'].has_key('versionSuffixSnapshot') and options['properties']['versionSuffixSnapshot'] == 'true':
+            options['properties']['version.suffix.snapshot'] = 'true'
         #Add project.src.skip option since quickstart don't need source plugin
         if 'properties' in options and options['properties'].has_key('project.src.skip') and options['properties']['project.src.skip'] == 'true':
             options['properties']['project.src.skip'] = 'true'
@@ -399,10 +420,22 @@ class ConfigReader:
             common_section['jenkinstemplate'] = parser.get('common', 'jenkinstemplate')
         if parser.has_option('common', 'product_name'):
             common_section['product_name'] = parser.get('common', 'product_name')
+        if parser.has_option('common', 'stakeholders'):
+            common_section['stakeholders'] = parser.get('common', 'stakeholders')
 
         if parser.has_option('common', 'include'):
             common_section['include'] = parser.get('common', 'include')
-
+        #add hou ruijie
+        if parser.has_option('common', 'product_version'):
+            common_section['product_version'] = parser.get('common', 'product_version')
+        if parser.has_option('common', 'release_milestone'):
+            common_section['release_milestone'] = parser.get('common', 'release_milestone')
+        if parser.has_option('common', 'release_estimation'):
+            common_section['description'] = parser.get('common', 'release_estimation')
+        if parser.has_option('common', 'jira.summary'):
+            common_section['Summary'] = parser.get('common', 'jira.summary')
+        if parser.has_option('common', 'jira.description'):
+            common_section['description'] = parser.get('common', 'jira.description')
         common_section['jobfailureemail'] = parser.get('common', 'jobfailureemail')
 
         config_dir = utils.get_dir(config_file)
@@ -442,7 +475,7 @@ class ConfigReader:
 
             self._do_read_section(config_path, os.path.basename(config_file), package_configs, parser, section)
 
-        return (common_section, package_configs, pom_manipulator_config)
+        return (common_section, package_configs, pom_manipulator_config, parser)
 
     def is_package_configured(self, package):
         return set(package.split(',')).issubset(self.package_configs)
@@ -631,7 +664,7 @@ class ConfigException(BaseException):
         super(ConfigException, self).__init__(message)
 
 
-from ConfigParser import InterpolationMissingOptionError
+from ConfigParser import InterpolationError, InterpolationMissingOptionError
 from ConfigParser import InterpolationSyntaxError, InterpolationDepthError
 from ConfigParser import MAX_INTERPOLATION_DEPTH
 from ConfigParser import DEFAULTSECT
