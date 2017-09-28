@@ -13,7 +13,7 @@ import swagger_client
 import pnc_cli.utils as utils
 import keycloak_config as kc
 import pnc_server_config as psc
-
+from tools.utils import set_log_level
 
 
 # make sure that input behaves as expected
@@ -34,6 +34,7 @@ class UserConfig():
         self.token_time = 0
         self.username = self.load_username_from_config(config)
         self.password = self.load_password_from_config(config)
+        self.loglevel = self.load_loglevel_from_config(config)
         self.pnc_config = psc.PncServerConfig(config)
         self.keycloak_config = kc.KeycloakConfig(config)
         self.token = self.retrieve_keycloak_token()
@@ -96,6 +97,14 @@ class UserConfig():
             username = config.get('PNC', 'username')
             sys.stderr.write("Loaded username from pnc-cli.conf: {}\n".format(username))
             return username
+        except ConfigParser.NoOptionError:
+            return None
+
+    def load_loglevel_from_config(self, config):
+        try:
+            loglevel = config.get('PNC', 'loglevel')
+            sys.stderr.write("Loaded loglevel '{}' from pnc-cli.conf\n".format(loglevel))
+            return loglevel
         except ConfigParser.NoOptionError:
             return None
 
@@ -199,3 +208,5 @@ def login(username=None, password=None):
     user.token = user.retrieve_keycloak_token()
     user.apiclient = user.create_api_client()
     save()
+
+

@@ -20,12 +20,15 @@ from pnc_cli import users
 from pnc_cli import archives
 import pnc_cli.user_config as uc
 from pnc_cli import makemead
-
-
-
-
+from pnc_cli import utils
+from pnc_cli.tools.utils import set_log_level
 
 parser = argh.ArghParser()
+
+parser.add_argument('--loglevel', choices=['debug-all','debug',
+    'info','warning','error', 'critical'],
+    help=("loglevel for pnc-cli"))
+
 parser.add_commands([uc.login,
                      products.create_product,
                      products.get_product,
@@ -116,11 +119,21 @@ parser.add_commands([uc.login,
                      buildconfigsetrecords.list_records_for_build_config_set,
                      users.get_logged_user,
                      makemead.make_mead,
-                     archives.generate_sources_zip])
+                     archives.generate_sources_zip,
+                     ])
 parser.autocomplete()
 
 
 def main():
+    args = parser.parse_args()
+
+    loglevel = args.loglevel
+    if loglevel is None:
+        loglevel = uc.user.loglevel
+
+    if loglevel is not None:
+        set_log_level(loglevel)
+
     parser.dispatch()
 
 
