@@ -89,18 +89,15 @@ class ConfigReader:
 
         options_properties = options['properties']
         if "redhat-" in config['version'] :
-           if options['properties'].has_key('versionAddSuffix') and options['properties']['versionAddSuffix'] == 'false':
-             logging.info("Skip adding version suffix since versionAddSuffix=false")
-           else:
-            options['properties'].update (dict({'version.suffix' : "redhat-%s" % re.split(".redhat-", config['version'])[1]}))
+                options['properties'].update (dict({'versionSuffix' : "redhat-%s" % re.split(".redhat-", config['version'])[1]}))
 
         self.override_config_with_options_prop(config, options_properties, 'dependencyManagement', 'dependencyManagement')
         self.override_config_with_options_prop(config, options_properties, 'pluginManagement', 'pluginManagement')
         self.override_config_with_options_prop(config, options_properties, 'propertyManagement', 'propertyManagement')
         self.override_config_with_options_prop(config, options_properties, 'profileInjection', 'profileInjection')
-        self.override_config_with_options_prop(config, options_properties, 'repoReportingRemoval', 'repo-reporting-removal')
+        self.override_config_with_options_prop(config, options_properties, 'repoReportingRemoval', 'repoReportingRemoval')
         self.override_config_with_options_prop(config, options_properties, 'repositoryInjection', 'repositoryInjection')
-        self.override_config_with_options_prop(config, options_properties, 'skipDeployment', 'enforce-skip')
+        self.override_config_with_options_prop(config, options_properties, 'skipDeployment', 'enforceSkip')
         self.override_config_with_options_prop(config, options_properties, 'overrideTransitive', 'overrideTransitive')
         if 'manipulation.disable' not in options_properties:
             if 'dependencyManagement' in config:
@@ -114,9 +111,9 @@ class ConfigReader:
             if 'profileInjection' in config:
                 options['properties'].update (dict({'profileInjection' : config['profileInjection']}))
             if 'repoReportingRemoval' in config:
-                options['properties'].update (dict({'repo-reporting-removal' : config['repoReportingRemoval']}))
+                options['properties'].update (dict({'repoReportingRemoval' : config['repoReportingRemoval']}))
             if 'skipDeployment' in config:
-                options['properties'].update (dict({'enforce-skip' : config['skipDeployment']}))
+                options['properties'].update (dict({'enforceSkip' : config['skipDeployment']}))
             if 'overrideTransitive' in config:
                 options['properties'].update (dict({'overrideTransitive' : config['overrideTransitive']}))
 
@@ -234,10 +231,6 @@ class ConfigReader:
         section_config['version'] = parser.get(section, 'version')
         section_config['substvers'] = string.replace(section_config['version'], "-", "_")
         section_config['scmURL'] = parser.get(section, 'scmURL')
-        if parser.has_option(section, 'pnc.buildScript'):
-            section_config['pnc.buildScript'] = parser.get(section, 'pnc.buildScript')
-        if parser.has_option(section, 'pnc.projectName'):
-            section_config['pnc.projectName'] = parser.get(section, 'pnc.projectName')
         if parser.has_option(section, 'skiptests'):
             section_config['skiptests'] = parser.get(section, 'skiptests')
         if parser.has_option(section, 'downstreamjobs'):
@@ -255,7 +248,7 @@ class ConfigReader:
             section_config['deliverables'] = deliverables
 
         else:
-            section_config['devliverables'] = None
+            section_config['deliverables'] = None
 
         if parser.has_option(section, 'jobtimeout'):
             section_config['jobtimeout'] = parser.getint(section, 'jobtimeout')
@@ -293,15 +286,15 @@ class ConfigReader:
         #If versionOverride=true, then parse the version.override from versions, pass it to pm extension later
         if 'properties' in options and options['properties'].has_key('versionOverride') and options['properties']['versionOverride'] == 'true':
             options['properties']['version.override'] = re.split(".redhat-", section_config['version'])[0]
-        if 'properties' in options and options['properties'].has_key('versionSuffixSnapshot') and options['properties']['versionSuffixSnapshot'] == 'true':
-            options['properties']['version.suffix.snapshot'] = 'true'
+        if 'properties' in options and options['properties'].has_key('version.suffix.snapshot') and options['properties']['version.suffix.snapshot'] == 'true':
+            options['properties']['versionSuffixSnapshot'] = 'true'
         #Add project.src.skip option since quickstart don't need source plugin
         if 'properties' in options and options['properties'].has_key('project.src.skip') and options['properties']['project.src.skip'] == 'true':
             options['properties']['project.src.skip'] = 'true'
         # Test for if ip.config.sha exists in the current properties set. If it does and only if the value of 'ip.confgi.sha' is empty, fill it in
         # with the full SHA value.
         if 'properties' in options and options['properties'].has_key('ip.config.sha') and options['properties']['ip.config.sha']=='':
-                ipsha = get_scm_info(config_path, read_only=True, filePath=config_file).commit_id
+                ipsha = get_scm_info(config_path, read_only=True).commit_id
                 logging.debug("ip.config.sha updated to %s ", ipsha)
                 options['properties']['ip.config.sha'] = ipsha
 
@@ -389,6 +382,7 @@ class ConfigReader:
             if include is not "":
                 sections_ = self.read_and_load(include)
                 for section_ in sections_:
+                    logging.debug ("Read included section %s", section_)
                     if parser.has_section(section_):
                         raise DuplicateSectionError( "The config section [%s] is existed in %s and include %s cfg file" % ( section_, config_file, re.split("\\s+", include.strip())[1]))
                 parser._sections.update(sections_)
