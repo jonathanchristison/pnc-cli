@@ -74,7 +74,7 @@ def build(id=None, name=None):
 
     response = utils.checked_api_call(configs_api, 'trigger', id=trigger_id)
     if response:
-        return response.content
+        return utils.format_json(response.content)
 
 
 @arg("-i", "--id", help="ID of the BuildConfiguration to retrieve.", type=types.existing_bc_id)
@@ -87,7 +87,7 @@ def get_build_configuration(id=None, name=None):
 
     response = utils.checked_api_call(configs_api, 'get_specific', id=found_id)
     if response:
-        return response.content
+        return utils.format_json(response.content)
 
 
 @arg("id", help="ID of the BuildConfiguration to update.", type=types.existing_bc_id)
@@ -141,7 +141,7 @@ def update_build_configuration(id, **kwargs):
 
     response = utils.checked_api_call(configs_api, 'update', id=to_update_id, body=bc_to_update)
     if response:
-        return response.content
+        return utils.format_json(response.content)
 
 
 @arg("-i", "--id", help="ID of the BuildConfiguration to delete.", type=types.existing_bc_id)
@@ -166,7 +166,7 @@ def delete_build_configuration(id=None, name=None):
 
     response = utils.checked_api_call(configs_api, 'delete_specific', id=to_delete_id)
     if response:
-        return response.content
+        return utils.format_json(response.content)
 
 
 @arg("name", help="Name for the new BuildConfiguration.", type=types.valid_bc_name)
